@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#070a12" />
+    <title>tmux 管理台</title>
+    <!-- SVG 图标，造型与 rail 的品牌标记一致（>_）。不引入二进制 .ico —— 现代浏览器均支持 -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <!-- 预载首屏（登录页 / 会话总览）真正会用到的那两个 latin 子集。
+         必须指向 **可变字体** 文件：旧版这里指向只含 400 字重的静态文件，
+         而那些文件在 v0.2.0 换字体后已从 dist 移除 —— 于是每次首屏都白跑
+         两个请求（落到 SPA 回退、拿到 HTML）＋一次字体解析失败，
+         而该被预载的 var 字体反倒没被预载。改字体文件名时必须同步这里。 -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/inter-latin-var.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/jetbrains-mono-latin-var.woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <style>html,body{background:#070a12;margin:0}</style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

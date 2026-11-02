@@ -1,0 +1,29 @@
+# ---- 依赖 ----
+node_modules/
+
+# ---- 前端构建产物（本地构建后上传服务器，不入库）----
+web/dist/
+web/dist.bak-*/
+web/*.tsbuildinfo
+
+# ---- 运行时数据与密钥（绝不可入库）----
+data/
+server/data/
+*.db
+*.db-journal
+*.db-wal
+.secret
+
+# ---- 产出物（体积大，仅本地归档）----
+.workbuddy/artifacts/
+
+# ---- 本地真值表（真实 IP / 域名 / 口令，绝不入库）----
+.workbuddy/local-env.md
+
+# ---- 系统与编辑器 ----
+.DS_Store
+._*
+Thumbs.db
+*.log
+.vscode/
+.idea/

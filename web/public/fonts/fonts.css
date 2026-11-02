@@ -1,0 +1,55 @@
+/* 自托管字体：Inter + JetBrains Mono（可变字体 · latin / latin-ext 子集，中文回退系统字体）
+ *
+ * v0.2.0 起改用**可变字体**。
+ * 旧版这里声明了 Inter 400/500/600 与 JetBrains Mono 400/500/600 共 12 条 @font-face，
+ * 但 src 全部指向仅有的 4 个 **400 字重**静态文件 —— 也就是说除了 400，其余字重全是
+ * 浏览器合成加粗（faux bold），笔画会发糊。而 KPI 数字（700）、会话名与编号徽标（600）
+ * 恰好都落在这些假字重上。
+ *
+ * 现在 4 个文件覆盖全部字重，总体积只比原来的 4 个静态 400 文件多约 12KB：
+ *   Inter            100 900
+ *   JetBrains Mono   100 800
+ *
+ * format 仍写 woff2（而非 woff2-variations）：兼容性更稳。
+ * 可变轴是否生效取决于 font-weight 是否声明为**区间**，与 format 关键字无关。
+ */
+
+/* ——— Inter · latin-ext ——— */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-ext-var.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ——— Inter · latin ——— */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-var.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ——— JetBrains Mono · latin-ext ——— */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-ext-var.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ——— JetBrains Mono · latin ——— */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

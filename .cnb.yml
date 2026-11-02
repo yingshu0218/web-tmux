@@ -1,0 +1,114 @@
+# CNB 流水线：构建 Docker 镜像 + 冒烟验证 + 推送 CNB 制品库
+#
+# ⚠️ 顶层键匹配的是「分支名**或 Tag 名**」：
+#     main:  → 只有 main 分支的 push 会走这里
+#     "v*":  → v 开头的 Tag（打 v1.0.13 这类版本号触发这里）
+#     写成 `main: tag_push:` 是常见错误 —— 那匹配的是「名叫 main 的 Tag」，流水线永远不触发。
+#
+# 推送到 CNB 自有制品库**不需要任何登录**：凭据由流水线内置。
+#
+# 冒烟验证为什么放在 CI 里做（而不是部署到某台服务器上试）：
+#   ① 「构建成功」不等于「能用」——层级错了只表现为整站 404，构建阶段完全看不出
+#   ② 制品库是 Private，服务器拉取要 docker login，把令牌外放到服务器是额外风险
+#   ③ CI 里 mirror 刚 build 的、无需 pull，验证的是「这一份」产物
+#   验完即删容器，不留状态。
+
+main:
+  push:
+    - name: build & verify & push
+      services:
+        - docker
+      stages:
+        - name: docker build
+          script: |
+            set -e
+            REPO="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+            echo "构建 ${REPO} @ ${CNB_COMMIT_SHORT}"
+            docker build \
+              --build-arg GIT_REVISION="${CNB_COMMIT}" \
+              -t "${REPO}:latest" \
+              -t "${REPO}:${CNB_COMMIT_SHORT}" \
+              -t "tw-smoke:local" \
+              .
+        - name: smoke test
+          script: |
+            set -e
+            docker rm -f tw-smoke >/dev/null 2>&1 || true
+            # 镜像里绝不能有运行期数据：.db / .secret 只应存在于 /app/data 卷。
+            # 这条断言对应过一次真实疑问（「演示数据是不是被打包进容器了」）——
+            # 当时镜像其实是干净的，但那种问题**在构建日志里完全看不出来**，
+            # 只能靠 .dockerignore 与 Dockerfile 的 COPY 清单自觉，所以固化成断言。
+            echo "--- 镜像内不得含运行期数据 ---"
+            LEAK=$(docker run --rm --entrypoint sh tw-smoke:local -c 'find /app -name "*.db*" -o -name ".secret" 2>/dev/null | head -5')
+            if [ -n "$LEAK" ]; then
+              echo "✗ 镜像里混进了数据文件（数据只应来自 /app/data 卷）："
+              echo "$LEAK"
+              exit 1
+            fi
+            echo "✓ 镜像内干净，无 .db / .secret"
+            docker run -d --name tw-smoke tw-smoke:local
+            sleep 5
+            echo "--- 启动日志 ---"
+            docker logs tw-smoke 2>&1 | tail -3
+            docker logs tw-smoke 2>&1 | grep -q "listening on" || { echo "✗ 服务未监听"; exit 1; }
+            echo "--- 目录布局（server 与 web/dist 必须同级）---"
+            docker exec tw-smoke sh -c 'ls /app; ls /app/web/dist/index.html /app/server/src/index.js'
+            echo "--- 首页 ---"
+            docker exec tw-smoke node -e 'fetch("http://127.0.0.1:9301/").then(r => { if (r.status !== 200) process.exit(1); return r.text(); }).then(t => { if (!t.includes("id=\"root\"")) process.exit(1); console.log("首页 200，含 root 挂载点"); })'
+            echo "--- 鉴权（未登录应为 401）---"
+            docker exec tw-smoke node -e 'fetch("http://127.0.0.1:9301/api/servers").then(r => { console.log("HTTP", r.status); if (r.status !== 401) process.exit(1); })'
+            echo "--- 数据卷落盘（.secret 必须写在 /app/data）---"
+            docker exec tw-smoke sh -c 'ls -la /app/data'
+            docker rm -f tw-smoke >/dev/null
+            echo "✓ 冒烟验证通过"
+        - name: docker push
+          script: |
+            set -e
+            REPO="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+            docker push "${REPO}:${CNB_COMMIT_SHORT}"
+            docker push "${REPO}:latest"
+
+"v*":
+  tag_push:
+    - name: release & verify & push
+      services:
+        - docker
+      stages:
+        - name: docker build
+          script: |
+            set -e
+            REPO="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+            echo "发布 ${REPO}:${CNB_BRANCH} @ ${CNB_COMMIT_SHORT}"
+            docker build \
+              --build-arg GIT_REVISION="${CNB_COMMIT}" \
+              -t "${REPO}:${CNB_BRANCH}" \
+              -t "${REPO}:${CNB_COMMIT_SHORT}" \
+              -t "tw-smoke:local" \
+              .
+        - name: smoke test
+          script: |
+            set -e
+            docker rm -f tw-smoke >/dev/null 2>&1 || true
+            echo "--- 镜像内不得含运行期数据 ---"
+            LEAK=$(docker run --rm --entrypoint sh tw-smoke:local -c 'find /app -name "*.db*" -o -name ".secret" 2>/dev/null | head -5')
+            if [ -n "$LEAK" ]; then
+              echo "✗ 镜像里混进了数据文件（数据只应来自 /app/data 卷）："
+              echo "$LEAK"
+              exit 1
+            fi
+            echo "✓ 镜像内干净，无 .db / .secret"
+            docker run -d --name tw-smoke tw-smoke:local
+            sleep 5
+            docker logs tw-smoke 2>&1 | tail -3
+            docker logs tw-smoke 2>&1 | grep -q "listening on" || { echo "✗ 服务未监听"; exit 1; }
+            docker exec tw-smoke sh -c 'ls /app/web/dist/index.html /app/server/src/index.js'
+            docker exec tw-smoke node -e 'fetch("http://127.0.0.1:9301/").then(r => { if (r.status !== 200) process.exit(1); return r.text(); }).then(t => { if (!t.includes("id=\"root\"")) process.exit(1); console.log("首页 200，含 root 挂载点"); })'
+            docker exec tw-smoke node -e 'fetch("http://127.0.0.1:9301/api/servers").then(r => { console.log("HTTP", r.status); if (r.status !== 401) process.exit(1); })'
+            docker rm -f tw-smoke >/dev/null
+            echo "✓ 冒烟验证通过"
+        - name: docker push
+          script: |
+            set -e
+            REPO="${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}"
+            docker push "${REPO}:${CNB_BRANCH}"
+            docker push "${REPO}:${CNB_COMMIT_SHORT}"

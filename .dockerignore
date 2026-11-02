@@ -1,0 +1,20 @@
+# 构建上下文瘦身：这些东西一律不进镜像
+**/node_modules
+**/dist
+**/*.log
+**/*.tgz
+**/*.tsbuildinfo
+
+# 版本控制与工具目录
+.git
+.gitignore
+.workbuddy
+
+# 运行期状态绝不能进镜像（凭据主密钥 .secret 在这里！）
+data
+server/data
+**/.secret
+**/*.db
+
+# 文档（镜像里不需要）
+AGENTS.md
